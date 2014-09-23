@@ -1,0 +1,128 @@
+---
+title: "YEAR OF BEST POPULAR MOVIES"
+author: "Leopold Hillah"
+date: "Monday, September 23, 2014"
+output: html_document
+---
+
+---
+## ASSUMPTIONS AND ALGORITHM
+ 
+This analysis is about determining the year that the best popular movies were produced.
+ 
+###1. ASSUMPTIONS
+ 
+We define **popular movie** as a movie, which was watched by many people so, received many ratings overall.
+ 
+We define **best movie** as a movie having received a five-star rating on the average (8 or more) or which has received a high proportion of r9 and r10 ratings out of all ratings.
+ 
+###2. MOVIE SELECTION CRITERIA
+ 
+We further define a **success score** as the product of both **popular** rating and **best** rating, standardized on a scale from 1 to 5.
+ 
+We then find movies with the maximum success score and determine their year of production.
+ 
+## DATA PROCESSING
+ 
+###1. RAW DATA
+ 
+The raw data for this project is a tab delimited file available at the following location: [http://had.co.nz/data/movies/](http://had.co.nz/data/movies/)
+ 
+###2. DATA LOADING & PRE-PROCESSING
+ 
+The data load assumes that the tab delimited file is downloaded and stored in the current working directory, whose value can be obtained by the `getwd()` R command. The data is then loaded into the dfmovies data frame using the `read.table` R command.
+ 
+### Setting global options
+ 
+```{r global_config}
+# set global chunk options: images will be 24x10 inches
+knitr::opts_chunk$set(cache=TRUE, echo=TRUE, message=FALSE, fig.width=24, fig.height=10)
+```
+ 
+### Setting up the R environment
+ 
+```{r setting_the_environment}
+# Clearing the cache
+rm(list = ls())
+ 
+# Loading required libraries
+if ((!require(ggplot2)) | (!require(plyr)) | (!require(reshape2))) install.packages('ggplot2', 'plyr', 'reshape2')
+ 
+```
+ 
+### Loading and preprocessing the data
+ 
+```{r data_load_processing}
+# Set working directoy here for csv file loading
+
+filepath <- getwd()
+ 
+# Load csv data data frames
+dfmovies <- read.table(paste(filepath, "movies.tab", sep="/"), sep="\t", header=TRUE, quote="", comment="", strip.white=TRUE, stringsAsFactors = FALSE)
+head(dfmovies)
+```
+ 
+Once the data is loaded, it is important to explore the main fields of interest  needed to answer the questions under investigation. Moreover, some initial pre-processing may need to be done first.
+ 
+##### Subsetting data on features of interest #####
+ 
+```{r movie_feature_extraction}
+# Extracting features of interest from movie data frame
+dfmint <- subset(dfmovies, select=c(year, rating, votes, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10))
+```
+ 
+##### Creating movie groups as per above criteria #####
+
+```{r best_movie_list}
+# Computing success scores for best movies
+ 
+dfbest <- ddply(dfmint, "year", mutate, best_pop = rating * votes)
+```
+
+##### Top best popular movies as per above criteria #####
+```{r top_best_movie_list}
+# Extract best movie list with rates 8 or more
+dftopbest <- arrange(dfbest[dfbest$rating >= 8,], desc(best_pop))
+```
+ 
+### Final ranking per year
+
+The final ranking sums up the product of rating and votes aggregated by year, and standardized on a scale from 0 to 100 using the transformation (100 * (value - mean) / (max - min)).
+
+```{r top_best_movie_rank}
+# Group data per year and rank them
+yeartopbest <- ddply(dftopbest, "year", summarize, best_count = length(year), best_success = sum(best_pop))
+
+# mean and distance from min to max
+mu <- mean(yeartopbest$best_success, na.rm = T)
+dist <- max(yeartopbest$best_success, na.rm = T) - min(yeartopbest$best_success, na.rm = T)
+
+# Final scaled transformation
+yeartopbest <- ddply(yeartopbest, "year", transform, best_success = round(100 * abs(best_success - mu) / dist))
+```
+
+### Top 10 years the best popular movies were produced: 1999, 2003, 1994 ...
+
+```{r top_10_best_movie_rank}
+# Top 10 years
+head(arrange(yeartopbest, desc(best_success)), 10)
+```
+
+
+### Plot showing the years the best popular movies were produced: 1999, 2003, 1994 ...
+
+```{r top_best_movie_graph}
+# Group data per year and rank them
+p1 <- ggplot(yeartopbest, aes(x=year, y=best_success)) + 
+  geom_bar(stat="identity", colour="darkgreen", fill="yellow")+
+  xlab("Year")+
+  scale_x_continuous(breaks=seq(1900, 2010, 5))+
+  scale_y_continuous(breaks=seq(0, 100, 10))+
+  ylab("Success Score of Best Popular Movies")+
+  theme(text = element_text(size=20),axis.text.x = element_text(angle=30, vjust=1))
+ 
+print(p1)
+
+```
+ 
+
