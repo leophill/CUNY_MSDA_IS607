@@ -1,0 +1,114 @@
+---
+title: "Pen-Based Recognition of Handwritten Digits"
+author: "Leopold Hillah"
+date: "Tuesday, September 30th, 2014"
+output: pdf_document
+---
+ 
+---
+## DATA SOURCE
+ 
+This training data set was made available by the UCI Machine Learning Repository at the folowing location: [http://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra](http://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra). The data is stored in csv format.
+ 
+## ANALYSIS
+ 
+
+###1. DATA LOADING & PRE-PROCESSING
+ 
+The data load assumes that the csv file is downloaded and stored in the current working directory, whose value can be obtained by the `getwd()` R command. The data is then loaded into the dfmovies data frame using the `read.csv` R command.
+ 
+### Setting global options
+ 
+```{r global_config}
+# set global chunk options: images will be 24x10 inches
+knitr::opts_chunk$set(cache=TRUE, echo=TRUE, message=FALSE, fig.width=24, fig.height=10)
+```
+ 
+### Setting up the R environment
+ 
+```{r setting_the_environment}
+# Clearing the cache
+rm(list = ls())
+ 
+# Loading required libraries
+if ((!require(ggplot2)) | (!require(dplyr)) | (!require(reshape2))) install.packages('ggplot2', 'dplyr', 'reshape2')
+ 
+```
+ 
+### Loading and preprocessing the data
+ 
+```{r data_load_processing}
+# Set working directoy here for csv file loading
+filepath <- getwd()
+ 
+# Load csv data data frames
+ 
+dfpen <- read.csv(paste(filepath, "pendigits.tra", sep="/"), header = FALSE, quote="", comment="", strip.white=TRUE, stringsAsFactors = FALSE)
+str(dfpen)
+head(dfpen)
+```
+ 
+Once the data is loaded, an initial exploration shows that the first 16 variables are input features and the 17th variable is the class. 
+
+**All variables are integer variables.**
+
+### null values per column
+
+We can look at the number of null values in each column of the data set:
+
+```{r null_values}
+dfnulls <- colSums(is.na(dfpen))
+print(dfnulls)
+```
+
+There is no null values in the data set.
+
+### Graph class distribution
+
+We can next look at the distribution of class values among the entire data set using a histogram:
+ 
+```{r class_distribution_graph}
+# Graph class distribution
+ 
+dfclass <- summarise (group_by(dfpen, V17), count = n())
+print(dfclass)
+
+p1 <- ggplot(dfpen, aes(x=V17)) + 
+  geom_histogram(binwidth=0.5, colour="darkblue", fill="white")+
+  xlab("Class")+
+  ylab("Count")+
+  scale_x_continuous(breaks=seq(0, 17, 1))+
+  theme(text = element_text(size=20),axis.text.x = element_text(angle=30, vjust=1))
+ 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+print(p1)
+```
+
+**Class value distribution are almost uniform.**
+
+### Correlation among variables
+
+We next look at the correlation among variables (except class or V17):
+ 
+```{r features_correlation}
+# Correlation among variables
+ 
+dfcor <- matrix(cor(dfpen[,-17]), ncol=16)
+str(dfcor)
+# Set diagonals to 0
+diag(dfcor) <- 0
+
+for (row in 1:16){
+        for (col in 1:16) {
+                if (row < col & abs(dfcor[row, col]) > 0.7) print(paste(row, col, dfcor[row, col], sep=":"))
+        } 
+                } 
+
+```
+
+**Highly correlated variables (70% or more) are :**
+-- V4 and V12,
+-- V6 and V8,
+-- V6 and V14,
+-- V8 and V14,
+-- V14 and V16
